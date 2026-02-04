@@ -1,0 +1,106 @@
+name: create trash issue
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # JST 5:00 = UTC 20:00
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+      OWNER: your-name
+      REPO: your-repo
+      PROJECT_NUMBER: 1        # Projects v2 の番号
+      ISSUE_TITLE: ゴミを捨てる
+      TARGET_COLUMN: "@家"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check project and create issue if needed
+        run: |
+          node <<'EOF'
+          const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
+          const {
+            GH_TOKEN,
+            OWNER,
+            REPO,
+            PROJECT_NUMBER,
+            ISSUE_TITLE,
+            TARGET_COLUMN
+          } = process.env;
+
+          const headers = {
+            Authorization: `Bearer ${GH_TOKEN}`,
+            "Content-Type": "application/json"
+          };
+
+          async function graphql(query, variables = {}) {
+            const res = await fetch("https://api.github.com/graphql", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ query, variables })
+            });
+            return res.json();
+          }
+
+          // 1. Project 情報取得
+          const projectRes = await graphql(`
+            query($login: String!, $number: Int!) {
+              user(login: $login) {
+                projectV2(number: $number) {
+                  id
+                  items(first: 100) {
+                    nodes {
+                      content {
+                        ... on Issue {
+                          title
+                        }
+                      }
+                      fieldValues(first: 10) {
+                        nodes {
+                          ... on ProjectV2ItemFieldSingleSelectValue {
+                            name
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          `, { login: OWNER, number: Number(PROJECT_NUMBER) });
+
+          const items = projectRes.data.user.projectV2.items.nodes;
+
+          const exists = items.some(item => {
+            const title = item.content?.title;
+            const columns = item.fieldValues.nodes.map(v => v.name);
+            return title === ISSUE_TITLE && columns.includes(TARGET_COLUMN);
+          });
+
+          if (exists) {
+            console.log("既に @家 に存在するため issue は作成しません");
+            return;
+          }
+
+          // 2. Issue 作成
+          const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/issues`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              title: ISSUE_TITLE,
+              body: "毎朝の定期タスク 🗑️"
+            })
+          });
+
+          if (!res.ok) {
+            console.error(await res.text());
+            process.exit(1);
+          }
+
+          console.log("issue を作成しました");
+          EOF
