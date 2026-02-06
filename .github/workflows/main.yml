@@ -23,7 +23,7 @@ jobs:
 
       - name: Issue の作成
         run: |
-          cat << 'EOF' | gh issue create --label "Today I Learned" --title "TIL - ${{ env.TODAY }}" --body-file -
+          cat << 'EOF' | gh issue create --title "TIL - ${{ env.TODAY }}" --body-file -
           ## 今日やること
           - [ ] 今日やることを書く
 
