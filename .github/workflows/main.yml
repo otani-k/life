@@ -1,4 +1,4 @@
-name: ゴミ捨てタスクの自動生成
+name: Today I Learned Issue Creator
 
 permissions:
   issues: write  # Issue作成のみの権限を付与
@@ -23,8 +23,8 @@ jobs:
 
       - name: Issue の作成
         run: |
-          cat << 'EOF' | gh issue create --title "ごみ捨て - ${{ env.TODAY }}"
-          - 
+          cat << 'EOF' | gh issue create --label "Today I Learned" --title "TIL - ${{ env.TODAY }}" --body-file
+          - [ ] 家のごみを捨てる
           EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
