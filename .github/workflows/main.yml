@@ -1,0 +1,30 @@
+name: ごみ捨てタスクの自動生成
+
+permissions:
+  issues: write  # Issue作成のみの権限を付与
+  contents: read # リポジトリの読み取り権限
+
+on:
+  schedule:
+    - cron: '0 22 * * *'  # 毎日22:00 UTCに実行（日本時間翌朝7:00 JST）
+  workflow_dispatch:      # 手動トリガーを追加
+
+jobs:
+  create-daily-issue:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 変数の設定
+        run: |
+          echo "TODAY=$(TZ=Asia/Tokyo date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Issue の作成
+        run: |
+          cat << 'EOF' | gh issue create --title "ごみ捨て - ${{ env.TODAY }}" --body-file -
+          家のごみを一袋捨てる
+          EOF
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
